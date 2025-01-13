@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.31/dist/vue.global.prod.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        #app {
+            height: 100vh;
+            max-height: 100vh;
+        }
+        .grid-container {
+            height: calc(100vh - 1rem);
+            max-height: calc(100vh - 1rem);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100">
+    <div id="app" class="p-2">
+        <div class="grid grid-container grid-cols-12 gap-2">
+            <!-- Current Weather & Clock -->
+            <div class="col-span-12 lg:col-span-4 glass rounded-lg p-3">
+                <div class="text-3xl font-light mb-2" v-cloak>
+                    {{ currentTime }}
+                </div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-5xl font-light mb-1">{{ currentTemp }}°</h1>
+                        <p class="text-lg text-gray-400">{{ description }}</p>
+                        <div class="mt-2 space-y-1 text-sm">
+                            <p>Feels like {{ feelsLike }}°</p>
+                            <p>Humidity: {{ humidity }}%</p>
+                            <p>Wind: {{ windSpeed }} mph</p>
+                        </div>
+                    </div>
+                    <i :class="weatherIcon" class="wi text-6xl"></i>
+                </div>
+            </div>
+
+            <!-- Hourly Forecast -->
+            <div class="col-span-12 lg:col-span-8 glass rounded-lg p-3">
+                <h2 class="text-lg mb-2">Hourly Forecast</h2>
+                <div class="flex space-x-4 overflow-x-auto scrollbar-hide pb-2">
+                    <div v-for="hour in hourlyForecast" 
+                         class="flex flex-col items-center min-w-[60px]">
+                        <span class="text-xs text-gray-400">{{ hour.time }}</span>
+                        <i :class="hour.icon" class="wi text-xl my-1"></i>
+                        <span class="text-sm">{{ hour.temp }}°</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5 Day Forecast -->
+            <div class="col-span-12 lg:col-span-4 glass rounded-lg p-3">
+                <h2 class="text-lg mb-2">5 Day Forecast</h2>
+                <div class="space-y-2">
+                    <div v-for="day in dailyForecast" 
+                         class="flex items-center justify-between">
+                        <span class="text-sm text-gray-400">{{ day.date }}</span>
+                        <i :class="day.icon" class="wi text-xl"></i>
+                        <div class="text-right">
+                            <span class="text-xs text-gray-400">{{ day.min }}°</span>
+                            <span class="text-sm"> / </span>
+                            <span class="text-sm">{{ day.max }}°</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weather Radar -->
+            <div class="col-span-12 lg:col-span-8 glass rounded-lg overflow-hidden">
+                <iframe width="100%" height="100%" src="https://embed.windy.com/embed2.html?lat=39.704&lon=-77.329&zoom=8&level=surface&overlay=radar&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    currentTime: '',
+                    currentTemp: '--',
+                    description: 'Loading...',
+                    feelsLike: '--',
+                    humidity: '--',
+                    windSpeed: '--',
+                    weatherIcon: 'wi wi-day-sunny',
+                    hourlyForecast: [],
+                    dailyForecast: []
+                }
+            },
+            mounted() {
+                this.startClock()
+                this.fetchWeather()
+                setInterval(this.fetchWeather, 300000) // Update every 5 minutes
+            },
+            methods: {
+                startClock() {
+                    setInterval(() => {
+                        this.currentTime = new Date().toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        })
+                    }, 1000)
+                },
+                async fetchWeather() {
+                    const lat = 39.684500186322616
+                    const lon = -77.35055195357647
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,relativehumidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch&timezone=America/New_York`
+                    
+                    try {
+                        const response = await fetch(url)
+                        const data = await response.json()
+                        this.updateWeatherData(data)
+                    } catch (error) {
+                        console.error('Error fetching weather:', error)
+                    }
+                },
+                updateWeatherData(data) {
+                    const currentHour = new Date().getHours()
+                    
+                    this.currentTemp = Math.round(data.current_weather.temperature)
+                    this.weatherIcon = this.getWeatherIcon(data.current_weather.weathercode)
+                    this.windSpeed = Math.round(data.current_weather.windspeed)
+                    this.humidity = data.hourly.relativehumidity_2m[currentHour]
+                    this.description = this.getWeatherDescription(data.current_weather.weathercode)
+                    this.feelsLike = Math.round(data.hourly.temperature_2m[currentHour])
+                    
+                    this.hourlyForecast = data.hourly.temperature_2m
+                        .slice(currentHour, currentHour + 24)
+                        .map((temp, i) => ({
+                            time: new Date(data.hourly.time[i + currentHour])
+                                .toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    hour12: true
+                                }),
+                            temp: Math.round(temp),
+                            icon: this.getWeatherIcon(data.hourly.weathercode[i + currentHour])
+                        }))
+
+                    this.dailyForecast = data.daily.temperature_2m_max
+                        .map((max, i) => ({
+                            date: new Date(data.daily.time[i])
+                                .toLocaleDateString('en-US', { weekday: 'short' }),
+                            max: Math.round(max),
+                            min: Math.round(data.daily.temperature_2m_min[i]),
+                            icon: this.getWeatherIcon(data.daily.weathercode[i])
+                        }))
+                },
+                getWeatherIcon(code) {
+                    const icons = {
+                        0: 'wi-day-sunny',
+                        1: 'wi-day-cloudy-high',
+                        2: 'wi-day-cloudy',
+                        3: 'wi-cloudy',
+                        45: 'wi-fog',
+                        48: 'wi-fog',
+                        51: 'wi-sprinkle',
+                        53: 'wi-showers',
+                        55: 'wi-rain',
+                        61: 'wi-rain',
+                        63: 'wi-rain-mix',
+                        65: 'wi-rain-wind',
+                        71: 'wi-snow',
+                        73: 'wi-snow',
+                        75: 'wi-snow-wind',
+                        77: 'wi-sleet',
+                        80: 'wi-showers',
+                        81: 'wi-rain',
+                        82: 'wi-rain-wind',
+                        85: 'wi-snow',
+                        86: 'wi-snow-wind',
+                        95: 'wi-thunderstorm',
+                        96: 'wi-storm-showers',
+                        99: 'wi-storm-warning'
+                    }
+                    return `wi ${icons[code] || 'wi-day-sunny'}`
+                },
+                getWeatherDescription(code) {
+                    const descriptions = {
+                        0: 'Clear Sky',
+                        1: 'Mostly Clear',
+                        2: 'Partly Cloudy',
+                        3: 'Cloudy',
+                        45: 'Foggy',
+                        48: 'Freezing Fog',
+                        51: 'Light Drizzle',
+                        53: 'Drizzle',
+                        55: 'Heavy Drizzle',
+                        61: 'Light Rain',
+                        63: 'Rain',
+                        65: 'Heavy Rain',
+                        71: 'Light Snow',
+                        73: 'Snow',
+                        75: 'Heavy Snow',
+                        77: 'Snow Grains',
+                        80: 'Light Showers',
+                        81: 'Showers',
+                        82: 'Heavy Showers',
+                        85: 'Light Snow Showers',
+                        86: 'Snow Showers',
+                        95: 'Thunderstorm',
+                        96: 'Thunderstorm with Hail',
+                        99: 'Severe Thunderstorm'
+                    }
+                    return descriptions[code] || 'Clear'
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
