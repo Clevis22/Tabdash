@@ -2,357 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Weather Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.4/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.10/css/weather-icons.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Widgets</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             background: #1a202c;
             color: #fff;
-            overflow: hidden;
-            position: fixed;
+            font-family: Arial, sans-serif;
+            display: grid;
+            grid-template-columns: 30% 70%;
+            grid-template-rows: 40% 60%;
+            height: 100vh;
+            gap: 10px;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent scrollbar */
+        }
+        .clock-container {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center; /* Change from flex-end to center */
+    font-size: 4rem;
+    text-align: center; /* Change from right to center */
+}
+        .date {
+            font-size: 1.5rem;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+        .small-widget {
+            grid-column: 1 / 2;
+            grid-row: 2 / 3;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        .large-widget {
+            grid-column: 2 / 3;
+            grid-row: 1 / 3;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        iframe {
             width: 100%;
             height: 100%;
-            -webkit-text-size-adjust: 100%;
-        }
-        .glass {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        #app {
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-        }
-        .dashboard-container {
-            height: 100vh;
-            width: 100vw;
-            padding: 0.5rem;
-            display: grid;
-            grid-template-rows: auto 1fr 1fr;
-            gap: 0.5rem;
-        }
-        .clock-text {
-            font-size: 5rem;
-            line-height: 1;
-        }
-        .date-text {
-            font-size: 1.5rem;
-            line-height: 1.2;
-        }
-        .hourly-scroll {
-            overflow-x: auto;
-            overflow-y: hidden;
-            white-space: nowrap;
-            -webkit-overflow-scrolling: touch;
-        }
-        @media (max-width: 640px) {
-            .clock-text {
-                font-size: 3.5rem;
-            }
-            .date-text {
-                font-size: 1.2rem;
-            }
-        }
-        * {
-            -webkit-user-select: none;
-            user-select: none;
+            border: none;
         }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="dashboard-container">
-            <!-- Top Row: Clock and Maps -->
-            <div class="grid grid-cols-12 gap-2" style="height: 33vh;">
-                <!-- Clock and Date -->
-                <div class="col-span-4 glass rounded-lg p-3 flex flex-col items-center justify-center">
-                    <div class="clock-text font-light text-center" v-cloak>
-                        {{ currentTime }}
-                    </div>
-                    <div class="date-text text-gray-400 text-center mt-2" v-cloak>
-                        {{ currentDate }}
-                    </div>
-                    <div class="text-sm text-gray-400 mt-2" v-cloak>
-                        {{ location }}
-                    </div>
-                </div>
+    <!-- Clock -->
+    <div class="clock-container">
+      <div class="clock"></div>
+      <div class="date"></div>
+  </div>
 
-                <!-- Weather Maps -->
-                <div class="col-span-8 grid grid-cols-2 gap-2">
-                    <div class="glass rounded-lg overflow-hidden">
-                        <iframe width="100%" height="100%" 
-                                :src="'https://embed.windy.com/embed2.html?lat=' + lat + '&lon=' + lon + '&zoom=8&level=surface&overlay=radar&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1'" 
-                                frameborder="0"></iframe>
-                    </div>
-                    <div class="glass rounded-lg overflow-hidden">
-                        <iframe width="100%" height="100%" 
-                                :src="'https://embed.windy.com/embed2.html?lat=' + lat + '&lon=' + lon + '&zoom=8&level=surface&overlay=temp&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1'" 
-                                frameborder="0"></iframe>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Middle Row: Current Weather and Hourly -->
-            <div class="grid grid-cols-12 gap-2" style="height: 32vh;">
-                <div class="col-span-4 glass rounded-lg p-3">
-                    <!-- Current Weather -->
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h1 class="text-4xl font-light mb-1">{{ currentTemp }}&#176;</h1>
-                            <p class="text-lg text-gray-400">{{ description }}</p>
-                            <div class="mt-2 space-y-1 text-sm">
-                                <p>Feels like {{ feelsLike }}&#176;</p>
-                                <p>Humidity: {{ humidity }}%</p>
-                                <p>Wind: {{ windSpeed }} mph</p>
-                            </div>
-                        </div>
-                        <i :class="weatherIcon" class="wi text-5xl"></i>
-                    </div>
-                    
-                    <!-- Hourly Forecast -->
-                    <div class="hourly-scroll">
-                        <div class="flex space-x-4">
-                            <div v-for="hour in hourlyForecast.slice(0,8)" 
-                                 class="flex flex-col items-center">
-                                <span class="text-xs text-gray-400">{{ hour.time }}</span>
-                                <i :class="hour.icon" class="wi text-lg my-1"></i>
-                                <span class="text-sm">{{ hour.temp }}&#176;</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 5 Day Forecast -->
-                <div class="col-span-8 glass rounded-lg p-3">
-                    <h2 class="text-lg mb-3">5 Day Forecast</h2>
-                    <div class="grid grid-rows-5 h-[calc(100%-2rem)] gap-1">
-                        <div v-for="day in dailyForecast" 
-                             class="flex items-center justify-between">
-                            <span class="text-base text-gray-400 w-1/3">{{ day.date }}</span>
-                            <i :class="day.icon" class="wi text-2xl w-1/3 text-center"></i>
-                            <div class="text-right w-1/3">
-                                <span class="text-sm text-gray-400">{{ day.min }}&#176;</span>
-                                <span class="text-base"> / </span>
-                                <span class="text-base">{{ day.max }}&#176;</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Small Windy Widget -->
+    <div class="small-widget">
+        <iframe 
+            src="https://embed.windy.com/embed2.html?lat=40.7128&lon=-74.0060&zoom=5&level=surface&overlay=rain&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=40.7128&detailLon=-74.0060&metricWind=default&metricTemp=default&radarRange=-1" 
+            frameborder="0">
+        </iframe>
     </div>
+
+    <!-- Large Windy Widget -->
+    <div class="large-widget">
+        <iframe 
+            src="https://embed.windy.com/embed2.html?lat=40.7128&lon=-74.0060&zoom=5&level=surface&overlay=clouds&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=40.7128&detailLon=-74.0060&metricWind=default&metricTemp=default&radarRange=-1" 
+            frameborder="0">
+        </iframe>
+    </div>
+
     <script>
-      new Vue({
-          el: '#app',
-          data: {
-              currentTime: '',
-              currentDate: '',
-              currentTemp: '--',
-              description: 'Loading...',
-              feelsLike: '--',
-              humidity: '--',
-              windSpeed: '--',
-              weatherIcon: 'wi wi-day-sunny',
-              hourlyForecast: [],
-              dailyForecast: [],
-              lat: 39.704,
-              lon: -77.329,
-              location: 'Loading location...',
-              locationError: false
-          },
-          created: function () {
-              this.getLocation();
-              this.startClock();
-              this.fetchWeather();
-              setInterval(this.fetchWeather.bind(this), 300000);
-          },
-          methods: {
-              getLocation: function () {
-                  var self = this;
-                  if (navigator.geolocation) {
-                      navigator.geolocation.getCurrentPosition(
-                          function (position) {
-                              self.lat = position.coords.latitude;
-                              self.lon = position.coords.longitude;
-                              self.fetchLocationName();
-                              self.fetchWeather();
-                          },
-                          function (error) {
-                              console.error('Geolocation error:', error);
-                              self.location = 'Using default location';
-                              self.fetchWeather();
-                          }
-                      );
-                  }
-              },
-              fetchLocationName: function () {
-                  var self = this;
-                  var xhr = new XMLHttpRequest();
-                  xhr.open('GET', 'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + self.lat + '&longitude=' + self.lon + '&localityLanguage=en');
-                  xhr.onload = function () {
-                      if (xhr.status === 200) {
-                          var data = JSON.parse(xhr.responseText);
-                          self.location = data.city || data.locality || 'Unknown Location';
-                      } else {
-                          console.error('Location name error:', xhr.status);
-                          self.location = 'Location unavailable';
-                      }
-                  };
-                  xhr.onerror = function () {
-                      console.error('Location name request failed');
-                      self.location = 'Location unavailable';
-                  };
-                  xhr.send();
-              },
-              startClock: function () {
-                  var self = this;
-                  function updateDateTime() {
-                      var now = new Date();
-                      self.currentTime = now.toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true
-                      });
-                      self.currentDate = now.toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'long',
-                          day: 'numeric'
-                      });
-                  }
-                  updateDateTime();
-                  setInterval(updateDateTime, 1000);
-              },
-              fetchWeather: function () {
-                  var self = this;
-                  var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + self.lat + '&longitude=' + self.lon + '&hourly=temperature_2m,weathercode,relativehumidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch&timezone=auto';
-                  
-                  var xhr = new XMLHttpRequest();
-                  xhr.open('GET', url);
-                  xhr.onload = function () {
-                      if (xhr.status === 200) {
-                          var data = JSON.parse(xhr.responseText);
-                          self.updateWeatherData(data);
-                      } else {
-                          console.error('Weather request failed:', xhr.status);
-                          self.description = 'Error loading weather';
-                      }
-                  };
-                  xhr.onerror = function () {
-                      console.error('Weather request error');
-                      self.description = 'Error loading weather';
-                  };
-                  xhr.send();
-              },
-              updateWeatherData: function (data) {
-                  try {
-                      var currentHour = new Date().getHours();
-                      this.currentTemp = Math.round(data.current_weather.temperature);
-                      this.weatherIcon = this.getWeatherIcon(data.current_weather.weathercode);
-                      this.windSpeed = Math.round(data.current_weather.windspeed);
-                      this.humidity = data.hourly.relativehumidity_2m[currentHour];
-                      this.description = this.getWeatherDescription(data.current_weather.weathercode);
-                      this.feelsLike = Math.round(data.hourly.temperature_2m[currentHour]);
-  
-                      this.hourlyForecast = [];
-                      for (var i = currentHour; i < currentHour + 8; i++) {
-                          this.hourlyForecast.push({
-                              time: new Date(data.hourly.time[i]).toLocaleTimeString('en-US', {
-                                  hour: 'numeric',
-                                  hour12: true
-                              }),
-                              temp: Math.round(data.hourly.temperature_2m[i]),
-                              icon: this.getWeatherIcon(data.hourly.weathercode[i])
-                          });
-                      }
-  
-                      this.dailyForecast = [];
-                      for (var j = 0; j < data.daily.time.length; j++) {
-                          this.dailyForecast.push({
-                              date: new Date(data.daily.time[j]).toLocaleDateString('en-US', {
-                                  weekday: 'long'
-                              }),
-                              max: Math.round(data.daily.temperature_2m_max[j]),
-                              min: Math.round(data.daily.temperature_2m_min[j]),
-                              icon: this.getWeatherIcon(data.daily.weathercode[j])
-                          });
-                      }
-                  } catch (error) {
-                      console.error('Data processing error:', error);
-                      this.description = 'Error processing weather data';
-                  }
-              },
-              getWeatherIcon: function (code) {
-                  var icons = {
-                      0: 'wi-day-sunny',
-                      1: 'wi-day-cloudy-high',
-                      2: 'wi-day-cloudy',
-                      3: 'wi-cloudy',
-                      45: 'wi-fog',
-                      48: 'wi-fog',
-                      51: 'wi-sprinkle',
-                      53: 'wi-showers',
-                      55: 'wi-rain',
-                      61: 'wi-rain',
-                      63: 'wi-rain-mix',
-                      65: 'wi-rain-wind',
-                      71: 'wi-snow',
-                      73: 'wi-snow',
-                      75: 'wi-snow-wind',
-                      77: 'wi-sleet',
-                      80: 'wi-showers',
-                      81: 'wi-rain',
-                      82: 'wi-rain-wind',
-                      85: 'wi-snow',
-                      86: 'wi-snow-wind',
-                      95: 'wi-thunderstorm',
-                      96: 'wi-storm-showers',
-                      99: 'wi-storm-warning'
-                  };
-                  return 'wi ' + (icons[code] || 'wi-day-sunny');
-              },
-              getWeatherDescription: function (code) {
-                  var descriptions = {
-                      0: 'Clear Sky',
-                      1: 'Mostly Clear',
-                      2: 'Partly Cloudy',
-                      3: 'Cloudy',
-                      45: 'Foggy',
-                      48: 'Freezing Fog',
-                      51: 'Light Drizzle',
-                      53: 'Drizzle',
-                      55: 'Heavy Drizzle',
-                      61: 'Light Rain',
-                      63: 'Rain',
-                      65: 'Heavy Rain',
-                      71: 'Light Snow',
-                      73: 'Snow',
-                      75: 'Heavy Snow',
-                      77: 'Snow Grains',
-                      80: 'Light Showers',
-                      81: 'Showers',
-                      82: 'Heavy Showers',
-                      85: 'Light Snow Showers',
-                      86: 'Snow Showers',
-                      95: 'Thunderstorm',
-                      96: 'Thunderstorm with Hail',
-                      99: 'Severe Thunderstorm'
-                  };
-                  return descriptions[code] || 'Clear';
-              }
-          }
-      });
-  </script>
+        // Clock and Date Script
+        function updateClockAndDate() {
+    const now = new Date();
+    
+    // Update Clock
+    let hours = now.getHours();
+    const minutes = now.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const strTime = `${hours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
+    document.querySelector('.clock').innerHTML = strTime;
+    
+    // Update Date
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const strDate = now.toLocaleDateString(undefined, options);
+    document.querySelector('.date').innerHTML = strDate;
+}
+
+setInterval(updateClockAndDate, 1000);
+updateClockAndDate(); // Initial call to display clock and date immediately    </script>
 </body>
-</html>  
+</html>
