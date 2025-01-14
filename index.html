@@ -2,20 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Weather Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.31/dist/vue.global.prod.js"></script>
+    <!-- Use older versions of libraries for better compatibility -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.4/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.10/css/weather-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            overscroll-behavior: none;
+            background: #1a202c;
+            color: #fff;
+            -webkit-text-size-adjust: 100%;
         }
         .glass {
             background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .scrollbar-hide::-webkit-scrollbar {
@@ -33,19 +36,72 @@
             height: calc(100vh - 1rem);
             max-height: calc(100vh - 1rem);
         }
+        /* Optimize touch targets for mobile */
+        button, a {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        /* Prevent text selection */
+        * {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        /* Larger clock for visibility */
+        .clock-text {
+            font-size: 5rem;
+            line-height: 1;
+        }
+        .date-text {
+            font-size: 1.5rem;
+            line-height: 1.2;
+        }
+        @media (max-width: 640px) {
+            .clock-text {
+                font-size: 3.5rem;
+            }
+            .date-text {
+                font-size: 1.2rem;
+            }
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100">
+<body>
     <div id="app" class="p-2">
-        <div class="grid grid-container grid-cols-12 gap-2">
-            <!-- Current Weather & Clock -->
-            <div class="col-span-12 lg:col-span-4 glass rounded-lg p-3">
-                <div class="text-3xl font-light mb-2" v-cloak>
+        <div class="grid grid-container grid-cols-1 md:grid-cols-12 gap-2">
+            <!-- Clock and Date -->
+            <div class="md:col-span-4 glass rounded-lg p-3 flex flex-col items-center justify-center">
+                <div class="clock-text font-light text-center" v-cloak>
                     {{ currentTime }}
                 </div>
+                <div class="date-text text-gray-400 text-center mt-2" v-cloak>
+                    {{ currentDate }}
+                </div>
+                <div class="text-sm text-gray-400 mt-2" v-cloak>
+                    {{ location }}
+                </div>
+            </div>
+
+            <!-- Weather Maps -->
+            <div class="md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-2">
+                <!-- Radar Map -->
+                <div class="glass rounded-lg overflow-hidden" style="height: 35vh">
+                    <iframe width="100%" height="100%" 
+                            :src="'https://embed.windy.com/embed2.html?lat=' + lat + '&lon=' + lon + '&zoom=8&level=surface&overlay=radar&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1'" 
+                            frameborder="0"></iframe>
+                </div>
+                <!-- Temperature Map -->
+                <div class="glass rounded-lg overflow-hidden" style="height: 35vh">
+                    <iframe width="100%" height="100%" 
+                            :src="'https://embed.windy.com/embed2.html?lat=' + lat + '&lon=' + lon + '&zoom=8&level=surface&overlay=temp&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1'" 
+                            frameborder="0"></iframe>
+                </div>
+            </div>
+
+            <!-- Current Weather -->
+            <div class="md:col-span-4 glass rounded-lg p-3">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-5xl font-light mb-1">{{ currentTemp }}°</h1>
+                        <h1 class="text-4xl font-light mb-1">{{ currentTemp }}°</h1>
                         <p class="text-lg text-gray-400">{{ description }}</p>
                         <div class="mt-2 space-y-1 text-sm">
                             <p>Feels like {{ feelsLike }}°</p>
@@ -53,122 +109,165 @@
                             <p>Wind: {{ windSpeed }} mph</p>
                         </div>
                     </div>
-                    <i :class="weatherIcon" class="wi text-6xl"></i>
+                    <i :class="weatherIcon" class="wi text-5xl"></i>
                 </div>
             </div>
 
-            <!-- Hourly Forecast -->
-            <div class="col-span-12 lg:col-span-8 glass rounded-lg p-3">
-                <h2 class="text-lg mb-2">Hourly Forecast</h2>
-                <div class="flex space-x-4 overflow-x-auto scrollbar-hide pb-2">
-                    <div v-for="hour in hourlyForecast" 
-                         class="flex flex-col items-center min-w-[60px]">
-                        <span class="text-xs text-gray-400">{{ hour.time }}</span>
-                        <i :class="hour.icon" class="wi text-xl my-1"></i>
-                        <span class="text-sm">{{ hour.temp }}°</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 5 Day Forecast -->
-            <div class="col-span-12 lg:col-span-4 glass rounded-lg p-3">
-                <h2 class="text-lg mb-2">5 Day Forecast</h2>
-                <div class="space-y-2">
-                    <div v-for="day in dailyForecast" 
-                         class="flex items-center justify-between">
-                        <span class="text-sm text-gray-400">{{ day.date }}</span>
-                        <i :class="day.icon" class="wi text-xl"></i>
-                        <div class="text-right">
-                            <span class="text-xs text-gray-400">{{ day.min }}°</span>
-                            <span class="text-sm"> / </span>
-                            <span class="text-sm">{{ day.max }}°</span>
+            <!-- Combined Forecasts -->
+            <div class="md:col-span-8 glass rounded-lg p-3">
+                <!-- Hourly Forecast -->
+                <div class="mb-4">
+                    <h2 class="text-lg mb-2">Next 12 Hours</h2>
+                    <div class="flex space-x-4 overflow-x-auto scrollbar-hide pb-2">
+                        <div v-for="hour in hourlyForecast.slice(0,12)" 
+                             class="flex flex-col items-center min-w-[60px]">
+                            <span class="text-sm text-gray-400">{{ hour.time }}</span>
+                            <i :class="hour.icon" class="wi text-2xl my-1"></i>
+                            <span class="text-lg">{{ hour.temp }}°</span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Weather Radar -->
-            <div class="col-span-12 lg:col-span-8 glass rounded-lg overflow-hidden">
-                <iframe width="100%" height="100%" src="https://embed.windy.com/embed2.html?lat=39.704&lon=-77.329&zoom=8&level=surface&overlay=radar&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1" frameborder="0"></iframe>
+                <!-- 5 Day Forecast -->
+                <div>
+                    <h2 class="text-lg mb-2">5 Day Forecast</h2>
+                    <div class="space-y-3">
+                        <div v-for="day in dailyForecast" 
+                             class="flex items-center justify-between">
+                            <span class="text-lg text-gray-400">{{ day.date }}</span>
+                            <i :class="day.icon" class="wi text-2xl"></i>
+                            <div class="text-right">
+                                <span class="text-sm text-gray-400">{{ day.min }}°</span>
+                                <span class="text-lg"> / </span>
+                                <span class="text-lg">{{ day.max }}°</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        const { createApp } = Vue
-
-        createApp({
-            data() {
-                return {
-                    currentTime: '',
-                    currentTemp: '--',
-                    description: 'Loading...',
-                    feelsLike: '--',
-                    humidity: '--',
-                    windSpeed: '--',
-                    weatherIcon: 'wi wi-day-sunny',
-                    hourlyForecast: [],
-                    dailyForecast: []
-                }
+        new Vue({
+            el: '#app',
+            data: {
+                currentTime: '',
+                currentDate: '',
+                currentTemp: '--',
+                description: 'Loading...',
+                feelsLike: '--',
+                humidity: '--',
+                windSpeed: '--',
+                weatherIcon: 'wi wi-day-sunny',
+                hourlyForecast: [],
+                dailyForecast: [],
+                lat: 39.704,
+                lon: -77.329,
+                location: 'Loading location...',
+                locationError: false
             },
-            mounted() {
-                this.startClock()
-                this.fetchWeather()
-                setInterval(this.fetchWeather, 300000) // Update every 5 minutes
+            created() {
+                this.getLocation();
+                this.startClock();
+                this.fetchWeather();
+                setInterval(this.fetchWeather, 300000);
             },
             methods: {
+                getLocation() {
+                    if ("geolocation" in navigator) {
+                        navigator.geolocation.getCurrentPosition(
+                            position => {
+                                this.lat = position.coords.latitude;
+                                this.lon = position.coords.longitude;
+                                this.fetchLocationName();
+                                this.fetchWeather();
+                            },
+                            error => {
+                                console.error('Geolocation error:', error);
+                                this.location = 'Using default location';
+                                this.fetchWeather();
+                            }
+                        );
+                    }
+                },
+                fetchLocationName() {
+                    fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${this.lat}&longitude=${this.lon}&localityLanguage=en`)
+                        .then(response => response.json())
+                        .then(data => {
+                            this.location = data.city || data.locality || 'Unknown Location';
+                        })
+                        .catch(error => {
+                            console.error('Location name error:', error);
+                            this.location = 'Location unavailable';
+                        });
+                },
                 startClock() {
-                    setInterval(() => {
-                        this.currentTime = new Date().toLocaleTimeString('en-US', {
+                    const updateDateTime = () => {
+                        const now = new Date();
+                        this.currentTime = now.toLocaleTimeString('en-US', {
                             hour: 'numeric',
                             minute: '2-digit',
                             hour12: true
-                        })
-                    }, 1000)
+                        });
+                        this.currentDate = now.toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                    };
+                    updateDateTime();
+                    setInterval(updateDateTime, 1000);
                 },
-                async fetchWeather() {
-                    const lat = 39.684500186322616
-                    const lon = -77.35055195357647
-                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weathercode,relativehumidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch&timezone=America/New_York`
+                fetchWeather() {
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${this.lat}&longitude=${this.lon}&hourly=temperature_2m,weathercode,relativehumidity_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch&timezone=auto`;
                     
-                    try {
-                        const response = await fetch(url)
-                        const data = await response.json()
-                        this.updateWeatherData(data)
-                    } catch (error) {
-                        console.error('Error fetching weather:', error)
-                    }
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => this.updateWeatherData(data))
+                        .catch(error => {
+                            console.error('Weather error:', error);
+                            this.description = 'Error loading weather';
+                        });
                 },
                 updateWeatherData(data) {
-                    const currentHour = new Date().getHours()
-                    
-                    this.currentTemp = Math.round(data.current_weather.temperature)
-                    this.weatherIcon = this.getWeatherIcon(data.current_weather.weathercode)
-                    this.windSpeed = Math.round(data.current_weather.windspeed)
-                    this.humidity = data.hourly.relativehumidity_2m[currentHour]
-                    this.description = this.getWeatherDescription(data.current_weather.weathercode)
-                    this.feelsLike = Math.round(data.hourly.temperature_2m[currentHour])
-                    
-                    this.hourlyForecast = data.hourly.temperature_2m
-                        .slice(currentHour, currentHour + 24)
-                        .map((temp, i) => ({
-                            time: new Date(data.hourly.time[i + currentHour])
-                                .toLocaleTimeString('en-US', {
+                    try {
+                        const currentHour = new Date().getHours();
+                        
+                        this.currentTemp = Math.round(data.current_weather.temperature);
+                        this.weatherIcon = this.getWeatherIcon(data.current_weather.weathercode);
+                        this.windSpeed = Math.round(data.current_weather.windspeed);
+                        this.humidity = data.hourly.relativehumidity_2m[currentHour];
+                        this.description = this.getWeatherDescription(data.current_weather.weathercode);
+                        this.feelsLike = Math.round(data.hourly.temperature_2m[currentHour]);
+
+                        this.hourlyForecast = [];
+                        for (let i = currentHour; i < currentHour + 24; i++) {
+                            this.hourlyForecast.push({
+                                time: new Date(data.hourly.time[i]).toLocaleTimeString('en-US', {
                                     hour: 'numeric',
                                     hour12: true
                                 }),
-                            temp: Math.round(temp),
-                            icon: this.getWeatherIcon(data.hourly.weathercode[i + currentHour])
-                        }))
+                                temp: Math.round(data.hourly.temperature_2m[i]),
+                                icon: this.getWeatherIcon(data.hourly.weathercode[i])
+                            });
+                        }
 
-                    this.dailyForecast = data.daily.temperature_2m_max
-                        .map((max, i) => ({
-                            date: new Date(data.daily.time[i])
-                                .toLocaleDateString('en-US', { weekday: 'short' }),
-                            max: Math.round(max),
-                            min: Math.round(data.daily.temperature_2m_min[i]),
-                            icon: this.getWeatherIcon(data.daily.weathercode[i])
-                        }))
+                        this.dailyForecast = [];
+                        for (let i = 0; i < data.daily.time.length; i++) {
+                            this.dailyForecast.push({
+                                date: new Date(data.daily.time[i]).toLocaleDateString('en-US', {
+                                    weekday: 'long'
+                                }),
+                                max: Math.round(data.daily.temperature_2m_max[i]),
+                                min: Math.round(data.daily.temperature_2m_min[i]),
+                                icon: this.getWeatherIcon(data.daily.weathercode[i])
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Data processing error:', error);
+                        this.description = 'Error processing weather data';
+                    }
                 },
                 getWeatherIcon(code) {
                     const icons = {
@@ -196,8 +295,8 @@
                         95: 'wi-thunderstorm',
                         96: 'wi-storm-showers',
                         99: 'wi-storm-warning'
-                    }
-                    return `wi ${icons[code] || 'wi-day-sunny'}`
+                    };
+                    return `wi ${icons[code] || 'wi-day-sunny'}`;
                 },
                 getWeatherDescription(code) {
                     const descriptions = {
@@ -225,11 +324,11 @@
                         95: 'Thunderstorm',
                         96: 'Thunderstorm with Hail',
                         99: 'Severe Thunderstorm'
-                    }
-                    return descriptions[code] || 'Clear'
+                    };
+                    return descriptions[code] || 'Clear';
                 }
             }
-        }).mount('#app')
+        });
     </script>
 </body>
 </html>
