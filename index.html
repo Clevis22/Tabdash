@@ -20,16 +20,16 @@
             overflow: hidden; /* Prevent scrollbar */
         }
         .clock-container {
-    grid-column: 1 / 2;
-    grid-row: 1 / 2;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center; /* Change from flex-end to center */
-    font-size: 4rem;
-    text-align: center; /* Change from right to center */
-}
+            grid-column: 1 / 2;
+            grid-row: 1 / 2;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center; /* Change from flex-end to center */
+            font-size: 4rem;
+            text-align: center; /* Change from right to center */
+        }
         .date {
             font-size: 1.5rem;
             margin-top: 5px;
@@ -61,9 +61,9 @@
 <body>
     <!-- Clock -->
     <div class="clock-container">
-      <div class="clock"></div>
-      <div class="date"></div>
-  </div>
+        <div class="clock"></div>
+        <div class="date"></div>
+    </div>
 
     <!-- Small Windy Widget -->
     <div class="small-widget">
@@ -81,27 +81,29 @@
         </iframe>
     </div>
 
+    <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=Date.prototype.toLocaleDateString"></script>
     <script>
         // Clock and Date Script
         function updateClockAndDate() {
-    const now = new Date();
-    
-    // Update Clock
-    let hours = now.getHours();
-    const minutes = now.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
-    const strTime = `${hours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
-    document.querySelector('.clock').innerHTML = strTime;
-    
-    // Update Date
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const strDate = now.toLocaleDateString(undefined, options);
-    document.querySelector('.date').innerHTML = strDate;
-}
+            var now = new Date();
+            
+            // Update Clock
+            var hours = now.getHours();
+            var minutes = now.getMinutes();
+            var ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            var strTime = hours + ':' + (minutes < 10 ? '0' + minutes : minutes) + ' ' + ampm;
+            document.querySelector('.clock').innerHTML = strTime;
+            
+            // Update Date
+            var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            var strDate = now.toLocaleDateString(undefined, options);
+            document.querySelector('.date').innerHTML = strDate;
+        }
 
-setInterval(updateClockAndDate, 1000);
-updateClockAndDate(); // Initial call to display clock and date immediately    </script>
+        setInterval(updateClockAndDate, 1000);
+        updateClockAndDate(); // Initial call to display clock and date immediately
+    </script>
 </body>
 </html>
